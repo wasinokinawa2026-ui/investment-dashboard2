@@ -3,36 +3,16 @@
 import { useEffect, useMemo, useState } from "react";
 import StockChart from "../components/StockChart";
 
-type StockPoint = {
-  time: string;
-  value: number;
-};
-
-type NewsItem = {
-  title: string;
-  source: string;
-  url: string;
-  publishedAt: string;
-  summary: string;
-};
-
-type ArchivedNewsItem = NewsItem & {
-  archivedAt: string;
-};
-
+type StockPoint = { time: string; value: number };
+type NewsItem = { title: string; source: string; url: string; publishedAt: string; summary: string };
+type ArchivedNewsItem = NewsItem & { archivedAt: string };
 type Ticker = "NVDA" | "AVGO";
 type RangeKey = "1M" | "6M" | "1Y" | "3Y";
 
-const rangeMap: Record<RangeKey, number> = {
-  "1M": 22,
-  "6M": 132,
-  "1Y": 264,
-  "3Y": 756,
-};
+const rangeMap: Record<RangeKey, number> = { "1M": 22, "6M": 132, "1Y": 264, "3Y": 756 };
 
 function filterDataByRange(data: StockPoint[], range: RangeKey) {
-  const count = rangeMap[range];
-  return data.slice(-count);
+  return data.slice(-rangeMap[range]);
 }
 
 export default function Home() {
@@ -49,18 +29,13 @@ export default function Home() {
   useEffect(() => {
     async function fetchPrices() {
       try {
-        setLoading(true);
-        setError("");
+        setLoading(true); setError("");
         const res = await fetch(`/api/prices?symbol=${selectedTicker}`);
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "주가 데이터를 불러오지 못했습니다.");
         setData(json);
-      } catch (err: any) {
-        setError(err.message || "에러가 발생했습니다.");
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
+      } catch (err: any) { setError(err.message); setData([]); }
+      finally { setLoading(false); }
     }
     fetchPrices();
   }, [selectedTicker]);
@@ -68,31 +43,20 @@ export default function Home() {
   useEffect(() => {
     async function fetchNews() {
       try {
-        setNewsLoading(true);
-        setNewsError("");
+        setNewsLoading(true); setNewsError("");
         const res = await fetch(`/api/news?symbol=${selectedTicker}`);
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || "뉴스를 불러오지 못했습니다.");
         setNews(json);
-      } catch (err: any) {
-        setNewsError(err.message || "뉴스 에러가 발생했습니다.");
-        setNews([]);
-      } finally {
-        setNewsLoading(false);
-      }
+      } catch (err: any) { setNewsError(err.message); setNews([]); }
+      finally { setNewsLoading(false); }
     }
     fetchNews();
   }, [selectedTicker]);
 
   useEffect(() => {
     const saved = localStorage.getItem("archivedNews");
-    if (saved) {
-      try {
-        setArchivedNews(JSON.parse(saved));
-      } catch {
-        setArchivedNews([]);
-      }
-    }
+    if (saved) { try { setArchivedNews(JSON.parse(saved)); } catch { setArchivedNews([]); } }
   }, []);
 
   const filteredData = useMemo(() => {
@@ -102,8 +66,7 @@ export default function Home() {
 
   function archiveNewsItem(item: NewsItem) {
     setArchivedNews((prev) => {
-      const exists = prev.some((n) => n.url === item.url);
-      if (exists) return prev;
+      if (prev.some((n) => n.url === item.url)) return prev;
       const updated = [{ ...item, archivedAt: new Date().toISOString() }, ...prev];
       localStorage.setItem("archivedNews", JSON.stringify(updated));
       return updated;
@@ -123,150 +86,140 @@ export default function Home() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-[1400px] px-4 py-6 lg:px-6 lg:py-10">
+    <main style={{ minHeight: "100vh", background: "#0a0f1e", color: "#f1f5f9", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 16px" }}>
 
-        <header className="mb-6 lg:mb-8">
-          <h1 className="text-2xl font-bold tracking-tight lg:text-4xl">My Investment Dashboard</h1>
-          <p className="mt-2 text-sm text-slate-300 lg:mt-3 lg:text-base">
-            Nvidia, Broadcom 주가와 AI/ASIC 관련 뉴스를 한눈에 보는 개인용 대시보드
-          </p>
-        </header>
+        {/* Header */}
+        <div style={{ marginBottom: 24 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", boxShadow: "0 0 8px #10b981" }} />
+            <span style={{ fontSize: 12, color: "#10b981", fontWeight: 600, letterSpacing: 2, textTransform: "uppercase" }}>Live Dashboard</span>
+          </div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, margin: 0, letterSpacing: -0.5 }}>My Investment Dashboard</h1>
+          <p style={{ fontSize: 13, color: "#64748b", marginTop: 4 }}>Nvidia · Broadcom · AI/ASIC</p>
+        </div>
 
-        {/* 모바일: 세로 / PC: 가로 2컬럼 */}
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
-          {/* ── 유튜브 (모바일 최상단) ── */}
-          <div className="w-full lg:w-[400px] shrink-0 lg:sticky lg:top-6">
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <h2 className="mb-4 text-xl font-semibold">📺 Bloomberg Live</h2>
-              <div className="aspect-video w-full overflow-hidden rounded-xl">
-                <iframe
-                  src="https://www.youtube.com/embed/live_stream?channel=UCIALMKvObZNtJ6AmdCLP7Lg&autoplay=1&mute=1"
-                  title="Bloomberg Business News Live"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                  className="h-full w-full" />
+          {/* Bloomberg */}
+          <div style={{ background: "linear-gradient(135deg, #0f172a, #1e293b)", border: "1px solid #1e293b", borderRadius: 20, overflow: "hidden" }}>
+            <div style={{ padding: "16px 16px 0" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                <span style={{ fontSize: 16 }}>📺</span>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Bloomberg Live</span>
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "#ef4444", fontWeight: 600, background: "rgba(239,68,68,0.1)", padding: "2px 8px", borderRadius: 20 }}>● LIVE</span>
               </div>
-              <p className="mt-3 text-xs text-slate-500">Bloomberg Business News · Live Stream</p>
+            </div>
+            <div style={{ position: "relative", paddingBottom: "56.25%", height: 0 }}>
+              <iframe
+                src="https://www.youtube.com/embed/live_stream?channel=UCIALMKvObZNtJ6AmdCLP7Lg&autoplay=1&mute=1"
+                title="Bloomberg Live"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }} />
             </div>
           </div>
 
-          {/* ── 차트 + 뉴스 ── */}
-          <div className="flex-1 min-w-0 w-full space-y-6">
+          {/* 종목 + 기간 선택 */}
+          <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 20, padding: 16 }}>
+            <p style={{ fontSize: 11, color: "#475569", fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>종목</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+              {(["NVDA", "AVGO"] as Ticker[]).map((t) => (
+                <button key={t} onClick={() => setSelectedTicker(t)} style={{
+                  flex: 1, padding: "10px 0", borderRadius: 12, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
+                  background: selectedTicker === t ? "linear-gradient(135deg, #10b981, #059669)" : "#1e293b",
+                  color: selectedTicker === t ? "#000" : "#94a3b8",
+                  boxShadow: selectedTicker === t ? "0 4px 15px rgba(16,185,129,0.3)" : "none",
+                  transition: "all 0.2s"
+                }}>{t}</button>
+              ))}
+            </div>
+            <p style={{ fontSize: 11, color: "#475569", fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 10 }}>기간</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              {(["1M", "6M", "1Y", "3Y"] as RangeKey[]).map((r) => (
+                <button key={r} onClick={() => setSelectedRange(r)} style={{
+                  flex: 1, padding: "10px 0", borderRadius: 12, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 13,
+                  background: selectedRange === r ? "linear-gradient(135deg, #10b981, #059669)" : "#1e293b",
+                  color: selectedRange === r ? "#000" : "#94a3b8",
+                  boxShadow: selectedRange === r ? "0 4px 15px rgba(16,185,129,0.3)" : "none",
+                  transition: "all 0.2s"
+                }}>{r}</button>
+              ))}
+            </div>
+          </div>
 
-            {/* 종목 선택 */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <h2 className="mb-4 text-xl font-semibold">종목 선택</h2>
-              <div className="flex gap-3">
-                <button onClick={() => setSelectedTicker("NVDA")} className={`rounded-xl px-4 py-2 font-medium ${selectedTicker === "NVDA" ? "bg-emerald-500 text-black" : "bg-slate-800 text-white"}`}>
-                  NVDA
-                </button>
-                <button onClick={() => setSelectedTicker("AVGO")} className={`rounded-xl px-4 py-2 font-medium ${selectedTicker === "AVGO" ? "bg-emerald-500 text-black" : "bg-slate-800 text-white"}`}>
-                  AVGO
-                </button>
+          {/* 차트 */}
+          <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 20, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <p style={{ fontSize: 11, color: "#475569", fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", margin: 0 }}>주가 차트</p>
+              <span style={{ fontSize: 12, color: "#10b981", fontWeight: 700, background: "rgba(16,185,129,0.1)", padding: "3px 10px", borderRadius: 20 }}>{selectedTicker} · {selectedRange}</span>
+            </div>
+            <div style={{ borderRadius: 12, overflow: "hidden", background: "#020817" }}>
+              {loading && <div style={{ height: 280, display: "flex", alignItems: "center", justifyContent: "center", color: "#475569", fontSize: 14 }}>불러오는 중...</div>}
+              {!loading && error && <div style={{ height: 280, display: "flex", alignItems: "center", justifyContent: "center", color: "#ef4444", fontSize: 14 }}>{error}</div>}
+              {!loading && !error && filteredData.length > 0 && <StockChart data={filteredData} />}
+            </div>
+          </div>
+
+          {/* Important News */}
+          <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 20, padding: 16 }}>
+            <p style={{ fontSize: 11, color: "#475569", fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", marginBottom: 14 }}>Important News</p>
+            {newsLoading && <div style={{ color: "#475569", fontSize: 14, textAlign: "center", padding: 20 }}>뉴스 불러오는 중...</div>}
+            {!newsLoading && newsError && <div style={{ color: "#ef4444", fontSize: 14 }}>{newsError}</div>}
+            {!newsLoading && !newsError && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {news.map((n, i) => (
+                  <div key={i} style={{ background: "#0a0f1e", border: "1px solid #1e293b", borderRadius: 16, padding: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                      <a href={n.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: "none", color: "inherit" }}>
+                        <p style={{ fontSize: 11, color: "#10b981", fontWeight: 600, margin: "0 0 4px" }}>{n.source} · {new Date(n.publishedAt).toLocaleDateString()}</p>
+                        <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 6px", lineHeight: 1.4, color: "#f1f5f9" }}>{n.title}</h3>
+                        <p style={{ fontSize: 12, color: "#64748b", margin: 0, lineHeight: 1.5 }}>{n.summary}</p>
+                      </a>
+                      <button onClick={() => archiveNewsItem(n)} disabled={isArchived(n.url)} style={{
+                        flexShrink: 0, padding: "6px 12px", borderRadius: 10, border: "none", cursor: isArchived(n.url) ? "not-allowed" : "pointer",
+                        fontSize: 11, fontWeight: 700,
+                        background: isArchived(n.url) ? "#1e293b" : "linear-gradient(135deg, #10b981, #059669)",
+                        color: isArchived(n.url) ? "#475569" : "#000"
+                      }}>{isArchived(n.url) ? "✓" : "Save"}</button>
+                    </div>
+                  </div>
+                ))}
+                {news.length === 0 && <div style={{ color: "#475569", fontSize: 14, textAlign: "center", padding: 20 }}>표시할 뉴스가 없습니다.</div>}
               </div>
-            </section>
+            )}
+          </div>
 
-            {/* 기간 선택 */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <h2 className="mb-4 text-xl font-semibold">기간 선택</h2>
-              <div className="flex flex-wrap gap-3">
-                {(["1M", "6M", "1Y", "3Y"] as RangeKey[]).map((range) => (
-                  <button key={range} onClick={() => setSelectedRange(range)} className={`rounded-xl px-4 py-2 font-medium ${selectedRange === range ? "bg-emerald-500 text-black" : "bg-slate-800 text-white"}`}>
-                    {range}
-                  </button>
+          {/* Archived News */}
+          <div style={{ background: "#0f172a", border: "1px solid #1e293b", borderRadius: 20, padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <p style={{ fontSize: 11, color: "#475569", fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", margin: 0 }}>Archived News</p>
+              <span style={{ fontSize: 11, color: "#475569", background: "#1e293b", padding: "3px 10px", borderRadius: 20 }}>{archivedNews.length}건</span>
+            </div>
+            {archivedNews.length === 0 ? (
+              <div style={{ color: "#475569", fontSize: 14, textAlign: "center", padding: 20 }}>저장된 뉴스가 없습니다.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {archivedNews.map((n, i) => (
+                  <div key={i} style={{ background: "#0a0f1e", border: "1px solid #1e293b", borderRadius: 16, padding: 14 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+                      <a href={n.url} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textDecoration: "none", color: "inherit" }}>
+                        <p style={{ fontSize: 11, color: "#10b981", fontWeight: 600, margin: "0 0 4px" }}>{n.source} · {new Date(n.publishedAt).toLocaleDateString()}</p>
+                        <h3 style={{ fontSize: 14, fontWeight: 700, margin: "0 0 6px", lineHeight: 1.4, color: "#f1f5f9" }}>{n.title}</h3>
+                        <p style={{ fontSize: 12, color: "#64748b", margin: 0 }}>{n.summary}</p>
+                        <p style={{ fontSize: 11, color: "#334155", marginTop: 6 }}>저장일: {new Date(n.archivedAt).toLocaleString()}</p>
+                      </a>
+                      <button onClick={() => removeArchivedNews(n.url)} style={{
+                        flexShrink: 0, padding: "6px 12px", borderRadius: 10, border: "none", cursor: "pointer",
+                        fontSize: 11, fontWeight: 700, background: "rgba(239,68,68,0.15)", color: "#ef4444"
+                      }}>삭제</button>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </section>
-
-            {/* 주가 차트 */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">주가 차트</h2>
-                <div className="text-sm text-slate-400">
-                  현재 선택: <span className="font-semibold text-white">{selectedTicker}</span> · <span className="font-semibold text-white">{selectedRange}</span>
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-                {loading && (
-                  <div className="flex h-[300px] items-center justify-center text-slate-400 lg:h-[400px]">
-                    주가 데이터를 불러오는 중...
-                  </div>
-                )}
-                {!loading && error && (
-                  <div className="flex h-[300px] items-center justify-center text-red-400 lg:h-[400px]">
-                    {error}
-                  </div>
-                )}
-                {!loading && !error && filteredData.length > 0 && (
-                  <StockChart data={filteredData} />
-                )}
-              </div>
-            </section>
-
-            {/* Important News */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <h2 className="mb-4 text-xl font-semibold">Important News</h2>
-              {newsLoading && (
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-slate-400">뉴스를 불러오는 중...</div>
-              )}
-              {!newsLoading && newsError && (
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-red-400">{newsError}</div>
-              )}
-              {!newsLoading && !newsError && (
-                <div className="space-y-4">
-                  {news.map((n, i) => (
-                    <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <a href={n.url} target="_blank" rel="noopener noreferrer" className="block flex-1 hover:text-emerald-300">
-                          <p className="text-sm text-emerald-400">{n.source} · {new Date(n.publishedAt).toLocaleDateString()}</p>
-                          <h3 className="mt-1 text-base font-semibold lg:text-lg">{n.title}</h3>
-                          <p className="mt-2 text-sm text-slate-300">{n.summary}</p>
-                        </a>
-                        <button onClick={() => archiveNewsItem(n)} disabled={isArchived(n.url)} className={`shrink-0 rounded-xl px-3 py-2 text-sm font-medium ${isArchived(n.url) ? "cursor-not-allowed bg-slate-700 text-slate-400" : "bg-emerald-500 text-black hover:bg-emerald-400"}`}>
-                          {isArchived(n.url) ? "Archived" : "Archive"}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {news.length === 0 && (
-                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-slate-400">표시할 뉴스가 없습니다.</div>
-                  )}
-                </div>
-              )}
-            </section>
-
-            {/* Archived News */}
-            <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Archived News</h2>
-                <span className="text-sm text-slate-400">총 {archivedNews.length}건</span>
-              </div>
-              {archivedNews.length === 0 ? (
-                <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-slate-400">아직 저장된 뉴스가 없습니다.</div>
-              ) : (
-                <div className="space-y-4">
-                  {archivedNews.map((n, i) => (
-                    <div key={i} className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <a href={n.url} target="_blank" rel="noopener noreferrer" className="block flex-1 hover:text-emerald-300">
-                          <p className="text-sm text-emerald-400">{n.source} · {new Date(n.publishedAt).toLocaleDateString()}</p>
-                          <h3 className="mt-1 text-base font-semibold lg:text-lg">{n.title}</h3>
-                          <p className="mt-2 text-sm text-slate-300">{n.summary}</p>
-                          <p className="mt-2 text-xs text-slate-500">저장일: {new Date(n.archivedAt).toLocaleString()}</p>
-                        </a>
-                        <button onClick={() => removeArchivedNews(n.url)} className="shrink-0 rounded-xl bg-red-500 px-3 py-2 text-sm font-medium text-white hover:bg-red-400">
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-
+            )}
           </div>
+
         </div>
       </div>
     </main>
