@@ -124,19 +124,20 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-[1400px] px-6 py-10">
+      <div className="mx-auto max-w-[1400px] px-4 py-6 lg:px-6 lg:py-10">
 
-        <header className="mb-8">
-          <h1 className="text-4xl font-bold tracking-tight">My Investment Dashboard</h1>
-          <p className="mt-3 text-slate-300">
+        <header className="mb-6 lg:mb-8">
+          <h1 className="text-2xl font-bold tracking-tight lg:text-4xl">My Investment Dashboard</h1>
+          <p className="mt-2 text-sm text-slate-300 lg:mt-3 lg:text-base">
             Nvidia, Broadcom 주가와 AI/ASIC 관련 뉴스를 한눈에 보는 개인용 대시보드
           </p>
         </header>
 
-        <div className="flex gap-6 items-start">
+        {/* 모바일: 세로 / PC: 가로 2컬럼 */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
 
-          {/* 왼쪽: Bloomberg 라이브 */}
-          <div className="w-[400px] shrink-0 sticky top-6">
+          {/* ── 유튜브 (모바일 최상단) ── */}
+          <div className="w-full lg:w-[400px] shrink-0 lg:sticky lg:top-6">
             <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <h2 className="mb-4 text-xl font-semibold">📺 Bloomberg Live</h2>
               <div className="aspect-video w-full overflow-hidden rounded-xl">
@@ -151,9 +152,10 @@ export default function Home() {
             </div>
           </div>
 
-          {/* 오른쪽: 차트 + 뉴스 */}
-          <div className="flex-1 min-w-0 space-y-6">
+          {/* ── 차트 + 뉴스 ── */}
+          <div className="flex-1 min-w-0 w-full space-y-6">
 
+            {/* 종목 선택 */}
             <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <h2 className="mb-4 text-xl font-semibold">종목 선택</h2>
               <div className="flex gap-3">
@@ -166,6 +168,7 @@ export default function Home() {
               </div>
             </section>
 
+            {/* 기간 선택 */}
             <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <h2 className="mb-4 text-xl font-semibold">기간 선택</h2>
               <div className="flex flex-wrap gap-3">
@@ -177,6 +180,7 @@ export default function Home() {
               </div>
             </section>
 
+            {/* 주가 차트 */}
             <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">주가 차트</h2>
@@ -186,12 +190,12 @@ export default function Home() {
               </div>
               <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
                 {loading && (
-                  <div className="flex h-[400px] items-center justify-center text-slate-400">
+                  <div className="flex h-[300px] items-center justify-center text-slate-400 lg:h-[400px]">
                     주가 데이터를 불러오는 중...
                   </div>
                 )}
                 {!loading && error && (
-                  <div className="flex h-[400px] items-center justify-center text-red-400">
+                  <div className="flex h-[300px] items-center justify-center text-red-400 lg:h-[400px]">
                     {error}
                   </div>
                 )}
@@ -201,6 +205,7 @@ export default function Home() {
               </div>
             </section>
 
+            {/* Important News */}
             <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <h2 className="mb-4 text-xl font-semibold">Important News</h2>
               {newsLoading && (
@@ -216,7 +221,7 @@ export default function Home() {
                       <div className="flex items-start justify-between gap-4">
                         <a href={n.url} target="_blank" rel="noopener noreferrer" className="block flex-1 hover:text-emerald-300">
                           <p className="text-sm text-emerald-400">{n.source} · {new Date(n.publishedAt).toLocaleDateString()}</p>
-                          <h3 className="mt-1 text-lg font-semibold">{n.title}</h3>
+                          <h3 className="mt-1 text-base font-semibold lg:text-lg">{n.title}</h3>
                           <p className="mt-2 text-sm text-slate-300">{n.summary}</p>
                         </a>
                         <button onClick={() => archiveNewsItem(n)} disabled={isArchived(n.url)} className={`shrink-0 rounded-xl px-3 py-2 text-sm font-medium ${isArchived(n.url) ? "cursor-not-allowed bg-slate-700 text-slate-400" : "bg-emerald-500 text-black hover:bg-emerald-400"}`}>
@@ -232,6 +237,7 @@ export default function Home() {
               )}
             </section>
 
+            {/* Archived News */}
             <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-xl font-semibold">Archived News</h2>
@@ -246,7 +252,7 @@ export default function Home() {
                       <div className="flex items-start justify-between gap-4">
                         <a href={n.url} target="_blank" rel="noopener noreferrer" className="block flex-1 hover:text-emerald-300">
                           <p className="text-sm text-emerald-400">{n.source} · {new Date(n.publishedAt).toLocaleDateString()}</p>
-                          <h3 className="mt-1 text-lg font-semibold">{n.title}</h3>
+                          <h3 className="mt-1 text-base font-semibold lg:text-lg">{n.title}</h3>
                           <p className="mt-2 text-sm text-slate-300">{n.summary}</p>
                           <p className="mt-2 text-xs text-slate-500">저장일: {new Date(n.archivedAt).toLocaleString()}</p>
                         </a>
