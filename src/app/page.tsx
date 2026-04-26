@@ -28,11 +28,7 @@ type ArchivedNewsItem = NewsItem & {
 };
 
 type DeepAnalysis = {
-  keyPoints: string[];
-  investmentImplications: string[];
-  marketContext: string[];
-  risks: string[];
-  watchFor: string[];
+  analysis: string;
 };
 
 type Ticker = "NVDA" | "AVGO";
@@ -726,23 +722,15 @@ export default function Home() {
                               }}>
                                 심층 분석 · GPT-4o
                               </p>
-                              {[
-                                { label: "핵심 포인트", items: analysisMap[n.url].keyPoints, color: "#60a5fa" },
-                                { label: "투자 시사점", items: analysisMap[n.url].investmentImplications, color: "#34d399" },
-                                { label: "시장 맥락", items: analysisMap[n.url].marketContext, color: "#a78bfa" },
-                                { label: "리스크 요인", items: analysisMap[n.url].risks, color: "#f87171" },
-                                { label: "주목할 지표·이벤트", items: analysisMap[n.url].watchFor, color: "#fbbf24" },
-                              ].map(({ label, items, color }) => (
-                                <div key={label} style={{ marginBottom: 12 }}>
-                                  <p style={{ fontSize: 11, fontWeight: 700, color, margin: "0 0 5px" }}>
-                                    {label}
-                                  </p>
-                                  <ul style={{ margin: 0, paddingLeft: 16, color: "#cbd5e1", fontSize: 12, lineHeight: 1.75 }}>
-                                    {items.map((item, idx) => (
-                                      <li key={idx}>{item}</li>
-                                    ))}
-                                  </ul>
-                                </div>
+                              {analysisMap[n.url].analysis.split("\n\n").map((para, idx) => (
+                                <p key={idx} style={{
+                                  fontSize: 13,
+                                  color: "#cbd5e1",
+                                  lineHeight: 1.85,
+                                  margin: "0 0 12px",
+                                }}>
+                                  {para}
+                                </p>
                               ))}
                             </div>
                           )}
@@ -937,23 +925,15 @@ export default function Home() {
                               }}>
                                 심층 분석 · GPT-4o
                               </p>
-                              {[
-                                { label: "핵심 포인트", items: analysisMap[n.url].keyPoints, color: "#60a5fa" },
-                                { label: "투자 시사점", items: analysisMap[n.url].investmentImplications, color: "#34d399" },
-                                { label: "시장 맥락", items: analysisMap[n.url].marketContext, color: "#a78bfa" },
-                                { label: "리스크 요인", items: analysisMap[n.url].risks, color: "#f87171" },
-                                { label: "주목할 지표·이벤트", items: analysisMap[n.url].watchFor, color: "#fbbf24" },
-                              ].map(({ label, items, color }) => (
-                                <div key={label} style={{ marginBottom: 12 }}>
-                                  <p style={{ fontSize: 11, fontWeight: 700, color, margin: "0 0 5px" }}>
-                                    {label}
-                                  </p>
-                                  <ul style={{ margin: 0, paddingLeft: 16, color: "#cbd5e1", fontSize: 12, lineHeight: 1.75 }}>
-                                    {items.map((item, idx) => (
-                                      <li key={idx}>{item}</li>
-                                    ))}
-                                  </ul>
-                                </div>
+                              {analysisMap[n.url].analysis.split("\n\n").map((para, idx) => (
+                                <p key={idx} style={{
+                                  fontSize: 13,
+                                  color: "#cbd5e1",
+                                  lineHeight: 1.85,
+                                  margin: "0 0 12px",
+                                }}>
+                                  {para}
+                                </p>
                               ))}
                             </div>
                           )}

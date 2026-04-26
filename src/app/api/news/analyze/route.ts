@@ -11,11 +11,7 @@ interface AnalyzeRequest {
 }
 
 interface DeepAnalysis {
-  keyPoints: string[];
-  investmentImplications: string[];
-  marketContext: string[];
-  risks: string[];
-  watchFor: string[];
+  analysis: string;
 }
 
 export async function POST(req: Request) {
@@ -48,9 +44,9 @@ async function deepAnalyze(article: AnalyzeRequest, apiKey: string): Promise<Dee
   const prompt = `
 You are a senior equity research analyst at a top-tier investment bank covering AI semiconductors.
 
-An investor is reading the following article and wants deep market intelligence — NOT a summary of the article, but investment research triggered by its themes and keywords.
+An investor is reading the following article and wants deep market intelligence — not a summary, but a cohesive investment research memo triggered by the article's themes and keywords.
 
-Article (use as a starting point only):
+Article (starting point only):
 - Title: ${article.title}
 - Source: ${article.source}
 - Published: ${article.publishedAt}
@@ -58,19 +54,14 @@ Article (use as a starting point only):
 
 Target: ${article.symbol}
 
-CRITICAL RULES:
-- Extract the key THEMES and KEYWORDS from the article, then research those themes deeply
-- Do NOT restate what the article already says — add new information the investor doesn't have yet
-- Draw on your knowledge of the full AI semiconductor ecosystem: TSMC, ASML, HBM suppliers (SK Hynix, Micron, Samsung), hyperscaler capex (Google, Microsoft, Meta, Amazon), competing chipmakers (AMD, Intel, Qualcomm, Marvell, custom ASICs), export controls, and macro trends
-- Every bullet must be concrete, specific, and actionable — no vague generalities
-- Reference real companies, real figures, real product names, real timelines wherever possible
+Write a flowing analytical memo in Korean (~500 words). Natural paragraphs, no headers, no bullet points, no numbered lists.
 
-Sections (all in Korean):
-1. keyPoints (5): What a sophisticated investor must know about the THEMES in this article — historical context, structural industry dynamics, data points, and current state that go well beyond what was written
-2. investmentImplications (5): How these themes concretely affect ${article.symbol}'s revenue, margins, TAM, competitive moat, or growth trajectory — be specific about which business segment and why
-3. marketContext (4): Structural and competitive forces in AI semiconductors relevant to these themes — what competitors, hyperscalers, foundries, and policymakers are doing right now
-4. risks (4): Key risks these themes expose for ${article.symbol} — regulatory, competitive displacement, demand cyclicality, supply chain concentration, geopolitical
-5. watchFor (4): Specific upcoming events, earnings calls (with approximate dates), product launch windows, policy deadlines, or macro data releases that will determine how these themes play out
+RULES:
+- Do NOT restate what the article says — add new information and context the investor doesn't have yet
+- Use the article's keywords as triggers to discuss broader industry dynamics
+- Reference real companies (TSMC, SK Hynix, Micron, AMD, Intel, Marvell, Google, Microsoft, Meta, Amazon, ASML), real product names, real figures, and concrete timelines
+- Cover: industry context, how it affects ${article.symbol}'s business, competitive dynamics, risks, and what to watch — but as one continuous analytical narrative, not separate sections
+- Write like a thoughtful analyst memo: direct, specific, no vague platitudes
 `;
 
   const res = await fetch("https://api.openai.com/v1/responses", {
@@ -91,44 +82,9 @@ Sections (all in Korean):
           schema: {
             type: "object",
             additionalProperties: false,
-            required: [
-              "keyPoints",
-              "investmentImplications",
-              "marketContext",
-              "risks",
-              "watchFor",
-            ],
+            required: ["analysis"],
             properties: {
-              keyPoints: {
-                type: "array",
-                minItems: 5,
-                maxItems: 5,
-                items: { type: "string" },
-              },
-              investmentImplications: {
-                type: "array",
-                minItems: 5,
-                maxItems: 5,
-                items: { type: "string" },
-              },
-              marketContext: {
-                type: "array",
-                minItems: 4,
-                maxItems: 4,
-                items: { type: "string" },
-              },
-              risks: {
-                type: "array",
-                minItems: 4,
-                maxItems: 4,
-                items: { type: "string" },
-              },
-              watchFor: {
-                type: "array",
-                minItems: 4,
-                maxItems: 4,
-                items: { type: "string" },
-              },
+              analysis: { type: "string" },
             },
           },
         },
