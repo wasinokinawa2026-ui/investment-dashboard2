@@ -207,6 +207,7 @@ function isUsableArticle(article: RawArticle, symbol: string): boolean {
   if (!article.title || !article.url) return false;
   if (BLOCKED_SOURCES.some((s) => source.includes(s) || url.includes(s))) return false;
   if (BLOCKED_KEYWORDS.some((kw) => text.includes(kw))) return false;
+  if (!TRUSTED_SOURCES.some((s) => source.includes(s))) return false;
 
   if (symbol === "NVDA") {
     return (
