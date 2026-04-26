@@ -27,6 +27,14 @@ type ArchivedNewsItem = NewsItem & {
   archivedAt: string;
 };
 
+type DeepAnalysis = {
+  keyPoints: string[];
+  investmentImplications: string[];
+  marketContext: string[];
+  risks: string[];
+  watchFor: string[];
+};
+
 type Ticker = "NVDA" | "AVGO";
 type RangeKey = "1M" | "6M" | "1Y" | "3Y";
 
@@ -68,6 +76,8 @@ export default function Home() {
   const [newsError, setNewsError] = useState("");
 
   const [archivedNews, setArchivedNews] = useState<ArchivedNewsItem[]>([]);
+  const [analyzingUrl, setAnalyzingUrl] = useState<string | null>(null);
+  const [analysisMap, setAnalysisMap] = useState<Record<string, DeepAnalysis>>({});
 
   useEffect(() => {
     async function fetchPrices() {
@@ -163,6 +173,34 @@ export default function Home() {
 
   function isArchived(url: string) {
     return archivedNews.some((n) => n.url === url);
+  }
+
+  async function analyzeArticle(article: NewsItem) {
+    if (analysisMap[article.url] || analyzingUrl === article.url) return;
+    setAnalyzingUrl(article.url);
+    try {
+      const res = await fetch("/api/news/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: article.title,
+          source: article.source,
+          url: article.url,
+          publishedAt: article.publishedAt,
+          score_reason: article.score_reason,
+          summaryBullets: article.summaryBullets,
+          symbol: selectedTicker,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAnalysisMap((prev) => ({ ...prev, [article.url]: data }));
+      }
+    } catch {
+      // silent — user can retry
+    } finally {
+      setAnalyzingUrl(null);
+    }
   }
 
   function renderScore(score: number) {
@@ -651,6 +689,64 @@ export default function Home() {
                             <li key={idx}>{bullet}</li>
                           ))}
                         </ul>
+
+                        <div style={{ marginTop: 12 }}>
+                          {!analysisMap[n.url] && (
+                            <button
+                              onClick={() => analyzeArticle(n)}
+                              disabled={analyzingUrl === n.url}
+                              style={{
+                                width: "100%",
+                                padding: "9px 0",
+                                borderRadius: 10,
+                                border: "1px solid #1e3a5f",
+                                cursor: analyzingUrl === n.url ? "not-allowed" : "pointer",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: analyzingUrl === n.url
+                                  ? "transparent"
+                                  : "rgba(56,189,248,0.06)",
+                                color: analyzingUrl === n.url ? "#334155" : "#38bdf8",
+                                letterSpacing: 0.3,
+                              }}
+                            >
+                              {analyzingUrl === n.url ? "GPT-4o 분석 중..." : "🔍 더 깊게 분석하기"}
+                            </button>
+                          )}
+
+                          {analysisMap[n.url] && (
+                            <div style={{ marginTop: 4, borderTop: "1px solid #1e293b", paddingTop: 14 }}>
+                              <p style={{
+                                fontSize: 10,
+                                color: "#38bdf8",
+                                fontWeight: 700,
+                                letterSpacing: 1.5,
+                                textTransform: "uppercase",
+                                margin: "0 0 12px",
+                              }}>
+                                심층 분석 · GPT-4o
+                              </p>
+                              {[
+                                { label: "핵심 포인트", items: analysisMap[n.url].keyPoints, color: "#60a5fa" },
+                                { label: "투자 시사점", items: analysisMap[n.url].investmentImplications, color: "#34d399" },
+                                { label: "시장 맥락", items: analysisMap[n.url].marketContext, color: "#a78bfa" },
+                                { label: "리스크 요인", items: analysisMap[n.url].risks, color: "#f87171" },
+                                { label: "주목할 지표·이벤트", items: analysisMap[n.url].watchFor, color: "#fbbf24" },
+                              ].map(({ label, items, color }) => (
+                                <div key={label} style={{ marginBottom: 12 }}>
+                                  <p style={{ fontSize: 11, fontWeight: 700, color, margin: "0 0 5px" }}>
+                                    {label}
+                                  </p>
+                                  <ul style={{ margin: 0, paddingLeft: 16, color: "#cbd5e1", fontSize: 12, lineHeight: 1.75 }}>
+                                    {items.map((item, idx) => (
+                                      <li key={idx}>{item}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       <button
