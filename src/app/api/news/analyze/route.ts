@@ -46,26 +46,31 @@ export async function POST(req: Request) {
 
 async function deepAnalyze(article: AnalyzeRequest, apiKey: string): Promise<DeepAnalysis> {
   const prompt = `
-You are a senior equity research analyst specializing in AI semiconductors (${article.symbol}).
+You are a senior equity research analyst at a top-tier investment bank covering AI semiconductors.
 
-An investor clicked "더 깊게 분석하기" on the following article. Provide a comprehensive deep-dive analysis in Korean.
+An investor is reading the following article and wants deep market intelligence — NOT a summary of the article, but investment research triggered by its themes and keywords.
 
-Article:
+Article (use as a starting point only):
 - Title: ${article.title}
 - Source: ${article.source}
 - Published: ${article.publishedAt}
-- Initial assessment: ${article.score_reason}
-- Key bullets already shown: ${article.summaryBullets.join(" | ")}
+- Initial bullets: ${article.summaryBullets.join(" | ")}
 
-Using your expertise in AI semiconductors, ${article.symbol}'s business model, competitive landscape, supply chain, and current macro environment, provide:
+Target: ${article.symbol}
 
-1. keyPoints (5): Key factual and contextual points — go beyond the article, add industry context the investor needs to know
-2. investmentImplications (5): Direct implications for ${article.symbol} shareholders — revenue, margins, demand, competitive positioning
-3. marketContext (4): Broader AI semiconductor market dynamics relevant to this news — include competitors, customers, macro trends
-4. risks (4): Specific risk factors this news highlights or amplifies for ${article.symbol}
-5. watchFor (4): Concrete upcoming metrics, events, earnings dates, or catalysts related to this story
+CRITICAL RULES:
+- Extract the key THEMES and KEYWORDS from the article, then research those themes deeply
+- Do NOT restate what the article already says — add new information the investor doesn't have yet
+- Draw on your knowledge of the full AI semiconductor ecosystem: TSMC, ASML, HBM suppliers (SK Hynix, Micron, Samsung), hyperscaler capex (Google, Microsoft, Meta, Amazon), competing chipmakers (AMD, Intel, Qualcomm, Marvell, custom ASICs), export controls, and macro trends
+- Every bullet must be concrete, specific, and actionable — no vague generalities
+- Reference real companies, real figures, real product names, real timelines wherever possible
 
-All responses must be in Korean. Be specific — avoid vague statements. Reference real companies, figures, or industry dynamics where relevant.
+Sections (all in Korean):
+1. keyPoints (5): What a sophisticated investor must know about the THEMES in this article — historical context, structural industry dynamics, data points, and current state that go well beyond what was written
+2. investmentImplications (5): How these themes concretely affect ${article.symbol}'s revenue, margins, TAM, competitive moat, or growth trajectory — be specific about which business segment and why
+3. marketContext (4): Structural and competitive forces in AI semiconductors relevant to these themes — what competitors, hyperscalers, foundries, and policymakers are doing right now
+4. risks (4): Key risks these themes expose for ${article.symbol} — regulatory, competitive displacement, demand cyclicality, supply chain concentration, geopolitical
+5. watchFor (4): Specific upcoming events, earnings calls (with approximate dates), product launch windows, policy deadlines, or macro data releases that will determine how these themes play out
 `;
 
   const res = await fetch("https://api.openai.com/v1/responses", {
