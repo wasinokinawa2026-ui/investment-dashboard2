@@ -74,6 +74,15 @@ export default function Home() {
   const [archivedNews, setArchivedNews] = useState<ArchivedNewsItem[]>([]);
   const [analyzingUrl, setAnalyzingUrl] = useState<string | null>(null);
   const [analysisMap, setAnalysisMap] = useState<Record<string, DeepAnalysis>>({});
+  const [collapsedAnalyses, setCollapsedAnalyses] = useState<Set<string>>(new Set());
+
+  function toggleAnalysis(url: string) {
+    setCollapsedAnalyses((prev) => {
+      const next = new Set(prev);
+      next.has(url) ? next.delete(url) : next.add(url);
+      return next;
+    });
+  }
 
   useEffect(() => {
     async function fetchPrices() {
@@ -713,18 +722,34 @@ export default function Home() {
                             </button>
                           )}
 
-                          {analysisMap[n.url] && (
+                          {analysisMap[n.url] && !collapsedAnalyses.has(n.url) && (
                             <div style={{ marginTop: 4, borderTop: "1px solid #1e293b", paddingTop: 14 }}>
-                              <p style={{
-                                fontSize: 10,
-                                color: "#38bdf8",
-                                fontWeight: 700,
-                                letterSpacing: 1.5,
-                                textTransform: "uppercase",
-                                margin: "0 0 12px",
-                              }}>
-                                심층 분석 · GPT-4o
-                              </p>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                <p style={{
+                                  fontSize: 10,
+                                  color: "#38bdf8",
+                                  fontWeight: 700,
+                                  letterSpacing: 1.5,
+                                  textTransform: "uppercase",
+                                  margin: 0,
+                                }}>
+                                  심층 분석 · GPT-4o
+                                </p>
+                                <button
+                                  onClick={() => toggleAnalysis(n.url)}
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: "#475569",
+                                    fontSize: 18,
+                                    lineHeight: 1,
+                                    padding: "0 2px",
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </div>
                               {analysisMap[n.url].analysis.split("\n\n").map((para, idx) => (
                                 <p key={idx} style={{
                                   fontSize: 13,
@@ -736,6 +761,26 @@ export default function Home() {
                                 </p>
                               ))}
                             </div>
+                          )}
+
+                          {analysisMap[n.url] && collapsedAnalyses.has(n.url) && (
+                            <button
+                              onClick={() => toggleAnalysis(n.url)}
+                              style={{
+                                width: "100%",
+                                padding: "9px 0",
+                                borderRadius: 10,
+                                border: "1px solid #1e3a5f",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: "rgba(56,189,248,0.06)",
+                                color: "#38bdf8",
+                                letterSpacing: 0.3,
+                              }}
+                            >
+                              📊 분석 결과 보기
+                            </button>
                           )}
                         </div>
                       </div>
@@ -916,18 +961,34 @@ export default function Home() {
                             </button>
                           )}
 
-                          {analysisMap[n.url] && (
+                          {analysisMap[n.url] && !collapsedAnalyses.has(n.url) && (
                             <div style={{ marginTop: 4, borderTop: "1px solid #1e293b", paddingTop: 14 }}>
-                              <p style={{
-                                fontSize: 10,
-                                color: "#38bdf8",
-                                fontWeight: 700,
-                                letterSpacing: 1.5,
-                                textTransform: "uppercase",
-                                margin: "0 0 12px",
-                              }}>
-                                심층 분석 · GPT-4o
-                              </p>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                                <p style={{
+                                  fontSize: 10,
+                                  color: "#38bdf8",
+                                  fontWeight: 700,
+                                  letterSpacing: 1.5,
+                                  textTransform: "uppercase",
+                                  margin: 0,
+                                }}>
+                                  심층 분석 · GPT-4o
+                                </p>
+                                <button
+                                  onClick={() => toggleAnalysis(n.url)}
+                                  style={{
+                                    background: "none",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    color: "#475569",
+                                    fontSize: 18,
+                                    lineHeight: 1,
+                                    padding: "0 2px",
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </div>
                               {analysisMap[n.url].analysis.split("\n\n").map((para, idx) => (
                                 <p key={idx} style={{
                                   fontSize: 13,
@@ -939,6 +1000,26 @@ export default function Home() {
                                 </p>
                               ))}
                             </div>
+                          )}
+
+                          {analysisMap[n.url] && collapsedAnalyses.has(n.url) && (
+                            <button
+                              onClick={() => toggleAnalysis(n.url)}
+                              style={{
+                                width: "100%",
+                                padding: "9px 0",
+                                borderRadius: 10,
+                                border: "1px solid #1e3a5f",
+                                cursor: "pointer",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: "rgba(56,189,248,0.06)",
+                                color: "#38bdf8",
+                                letterSpacing: 0.3,
+                              }}
+                            >
+                              📊 분석 결과 보기
+                            </button>
                           )}
                         </div>
                       </div>
