@@ -67,7 +67,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const [news, setNews] = useState<NewsItem[]>([]);
+  const [newsCache, setNewsCache] = useState<Partial<Record<Ticker, NewsItem[]>>>({});
   const [newsLoading, setNewsLoading] = useState(false);
   const [newsError, setNewsError] = useState("");
 
@@ -101,6 +101,8 @@ export default function Home() {
   }, [selectedTicker]);
 
   useEffect(() => {
+    if (newsCache[selectedTicker]) return;
+
     async function fetchNews() {
       try {
         setNewsLoading(true);
@@ -113,10 +115,9 @@ export default function Home() {
           throw new Error(json.error || "뉴스를 불러오지 못했습니다.");
         }
 
-        setNews(json);
+        setNewsCache((prev) => ({ ...prev, [selectedTicker]: json }));
       } catch (err: any) {
         setNewsError(err.message);
-        setNews([]);
       } finally {
         setNewsLoading(false);
       }
@@ -124,6 +125,8 @@ export default function Home() {
 
     fetchNews();
   }, [selectedTicker]);
+
+  const news = newsCache[selectedTicker] ?? [];
 
   useEffect(() => {
     const saved = localStorage.getItem("archivedNews");
