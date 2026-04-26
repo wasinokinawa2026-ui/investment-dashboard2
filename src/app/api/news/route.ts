@@ -1,109 +1,404 @@
 import { NextResponse } from "next/server";
 
+// ── Types ────────────────────────────────────────────────────────────────────
+
+interface RawArticle {
+  title?: string;
+  source?: { name?: string };
+  url?: string;
+  publishedAt?: string;
+  description?: string;
+}
+
+interface ScoredArticle {
+  title: string;
+  source: string;
+  url: string;
+  publishedAt: string;
+  description: string;
+  pre_score: number;
+}
+
+interface LLMArticleInput {
+  title: string;
+  source: string;
+  url: string;
+  publishedAt: string;
+  description: string;
+}
+
+interface AnalyzedArticle {
+  title: string;
+  source: string;
+  url: string;
+  publishedAt: string;
+  relevance_score: number;
+  score_reason: string;
+  directional_signal: "Bullish" | "Bearish" | "Neutral" | "Mixed";
+  primary_tickers: string[];
+  confidence: "High" | "Medium" | "Low";
+  summaryBullets: string[];
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const VALID_SYMBOLS = new Set(["NVDA", "AVGO"]);
+
 const TRUSTED_SOURCES = [
+  // 글로벌 금융/경제 1티어
   "reuters",
   "bloomberg",
-  "cnbc",
   "wall street journal",
-  "the wall street journal",
   "wsj",
+  "financial times",
+  "ft.com",
+  "the economist",
+  "barrons",
+  "fortune",
+  "forbes",
+  "marketwatch",
+  // 방송/미디어
+  "cnbc",
+  "bbc",
+  "nikkei",
+  "axios",
+  // 테크 전문
+  "the information",
+  "techcrunch",
+  "wired",
+  "ars technica",
+  "the verge",
+  "mit technology review",
+  "ieee spectrum",
+  // 반도체/하드웨어 전문
+  "digitimes",
+  "eetimes",
+  "tom's hardware",
 ];
+
+const BLOCKED_SOURCES = [
+  "github",
+  "pypi",
+  "seclists",
+  "majorgeeks",
+  "crypto briefing",
+  "cryptobriefing",
+  "alltoc",
+];
+
+const BLOCKED_KEYWORDS = [
+  "spacex",
+  "healthcare",
+  "mac mini",
+  "crypto",
+  "coin",
+  "etf",
+  "ipo wait",
+];
+
+const HIGH_VALUE_KEYWORDS = [
+  "earnings", "revenue", "margin", "guidance", "forecast",
+  "capex", "data center", "datacenter", "ai chip", "semiconductor",
+  "hbm", "supply", "demand", "export control", "tsmc",
+];
+
+// ── In-memory cache (30 min TTL) ──────────────────────────────────────────────
+
+const responseCache = new Map<string, { data: AnalyzedArticle[]; expiry: number }>();
+const CACHE_TTL_MS = 30 * 60 * 1000;
+
+// ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const symbol = searchParams.get("symbol") || "NVDA";
+  const symbol = validateSymbol(searchParams.get("symbol") ?? "NVDA");
 
-  const apiKey = process.env.NEWS_API_KEY;
+  const newsApiKey = process.env.NEWS_API_KEY;
+  const openAiApiKey = process.env.OPENAI_API_KEY;
 
-  console.log("NEWS_API_KEY exists:", !!apiKey);
-
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "Missing NEWS_API_KEY in .env.local" },
-      { status: 500 }
-    );
+  if (!newsApiKey || !openAiApiKey) {
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 });
   }
 
-  const query =
-    symbol === "NVDA"
-      ? "(Nvidia OR NVDA)"
-      : "(Broadcom OR AVGO)";
-
-  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(
-    query
-  )}&language=en&sortBy=publishedAt&pageSize=20&apiKey=${apiKey}`;
+  const cached = responseCache.get(symbol);
+  if (cached && cached.expiry > Date.now()) {
+    return NextResponse.json(cached.data);
+  }
 
   try {
-    const res = await fetch(url, { cache: "no-store" });
-    const data = await res.json();
+    const articles = await fetchAndFilterNews(symbol, newsApiKey);
 
-    console.log("News API status:", res.status);
-    console.log("News API response:", data);
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: "News API request failed", details: data },
-        { status: 500 }
-      );
+    if (articles.length === 0) {
+      return NextResponse.json([]);
     }
 
-    if (!data.articles || !Array.isArray(data.articles)) {
-      return NextResponse.json(
-        { error: "No news data", details: data },
-        { status: 500 }
-      );
-    }
+    const result = await analyzeNewsWithLLM({ articles, symbol, openAiApiKey });
 
-    console.log(
-      "Article sources:",
-      data.articles.map((a: any) => a?.source?.name)
-    );
-
-    let filtered = data.articles.filter((a: any) => {
-      const sourceName = a?.source?.name?.toLowerCase?.() || "";
-      return TRUSTED_SOURCES.some((s) => sourceName.includes(s));
-    });
-
-    console.log("Total articles:", data.articles.length);
-    console.log("Filtered articles:", filtered.length);
-
-    if (filtered.length === 0) {
-      filtered = data.articles;
-    }
-
-    const result = filtered.slice(0, 10).map((a: any) => ({
-      title: a.title,
-      source: a.source?.name || "Unknown",
-      url: a.url,
-      publishedAt: a.publishedAt,
-      summary: generateInsight(a.title, a.description),
-    }));
+    responseCache.set(symbol, { data: result, expiry: Date.now() + CACHE_TTL_MS });
 
     return NextResponse.json(result);
-  } catch (error: any) {
-    console.error("NEWS ROUTE ERROR:", error);
-
-    return NextResponse.json(
-      { error: "Failed to fetch news", details: String(error) },
-      { status: 500 }
-    );
+  } catch (error) {
+    console.error("NEWS ROUTE ERROR:", error instanceof Error ? error.message : String(error));
+    return NextResponse.json({ error: "Failed to fetch and analyze news" }, { status: 500 });
   }
 }
 
-function generateInsight(title: string, description?: string) {
-  const text = `${title} ${description || ""}`.toLowerCase();
+// ── Validation ────────────────────────────────────────────────────────────────
 
-  if (text.includes("ai") || text.includes("datacenter")) {
-    return "AI 수요 증가 → 데이터센터 투자 확대 → 반도체 수요 긍정";
+function validateSymbol(raw: string): string {
+  const upper = raw.toUpperCase().replace(/[^A-Z]/g, "").slice(0, 10);
+  return VALID_SYMBOLS.has(upper) ? upper : "NVDA";
+}
+
+// ── News fetching ─────────────────────────────────────────────────────────────
+
+async function fetchAndFilterNews(symbol: string, apiKey: string): Promise<ScoredArticle[]> {
+  const query =
+    symbol === "NVDA"
+      ? '(Nvidia OR NVDA) AND (AI OR GPU OR "data center" OR semiconductor OR chip OR earnings OR capex)'
+      : '(Broadcom OR AVGO) AND (AI OR ASIC OR "custom chip" OR networking OR semiconductor OR earnings OR capex)';
+
+  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=50`;
+
+  const res = await fetch(url, {
+    headers: { "X-Api-Key": apiKey },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    throw new Error(`News API responded with ${res.status}`);
   }
 
-  if (text.includes("asic") || text.includes("custom chip")) {
-    return "ASIC 확대 → Broadcom 수혜 가능성";
+  const data = await res.json();
+
+  if (!Array.isArray(data.articles)) {
+    return [];
   }
 
-  if (text.includes("gpu")) {
-    return "GPU 수요 증가 → Nvidia 실적 상승 가능성";
+  const scored = (data.articles as RawArticle[])
+    .filter((a) => isUsableArticle(a, symbol))
+    .map((a) => toScoredArticle(a, symbol))
+    .filter((a) => a.pre_score >= 35);
+
+  const deduped = removeDuplicateArticles(scored);
+  deduped.sort((a, b) => b.pre_score - a.pre_score);
+
+  return deduped.slice(0, 25);
+}
+
+function toScoredArticle(a: RawArticle, symbol: string): ScoredArticle {
+  return {
+    title: a.title ?? "",
+    source: a.source?.name ?? "Unknown",
+    url: a.url ?? "",
+    publishedAt: a.publishedAt ?? "",
+    description: a.description ?? "",
+    pre_score: scoreArticle(a, symbol),
+  };
+}
+
+function isUsableArticle(article: RawArticle, symbol: string): boolean {
+  const source = article.source?.name?.toLowerCase() ?? "";
+  const title = article.title?.toLowerCase() ?? "";
+  const description = article.description?.toLowerCase() ?? "";
+  const url = article.url?.toLowerCase() ?? "";
+  const text = `${title} ${description}`;
+
+  if (!article.title || !article.url) return false;
+  if (BLOCKED_SOURCES.some((s) => source.includes(s) || url.includes(s))) return false;
+  if (BLOCKED_KEYWORDS.some((kw) => text.includes(kw))) return false;
+
+  if (symbol === "NVDA") {
+    return (
+      text.includes("nvidia") ||
+      text.includes("nvda") ||
+      (text.includes("ai") &&
+        (text.includes("gpu") ||
+          text.includes("chip") ||
+          text.includes("semiconductor") ||
+          text.includes("data center") ||
+          text.includes("datacenter")))
+    );
   }
 
-  return "반도체 산업 전반 영향 가능";
+  return (
+    text.includes("broadcom") ||
+    text.includes("avgo") ||
+    (text.includes("ai") &&
+      (text.includes("asic") ||
+        text.includes("custom chip") ||
+        text.includes("custom silicon") ||
+        text.includes("networking") ||
+        text.includes("semiconductor")))
+  );
+}
+
+function scoreArticle(article: RawArticle, symbol: string): number {
+  const source = article.source?.name?.toLowerCase() ?? "";
+  const title = article.title?.toLowerCase() ?? "";
+  const description = article.description?.toLowerCase() ?? "";
+  const text = `${title} ${description}`;
+
+  let score = 0;
+
+  if (TRUSTED_SOURCES.some((s) => source.includes(s))) score += 20;
+
+  if (symbol === "NVDA") {
+    if (text.includes("nvidia")) score += 35;
+    if (text.includes("nvda")) score += 35;
+    if (text.includes("gpu")) score += 15;
+  } else {
+    if (text.includes("broadcom")) score += 35;
+    if (text.includes("avgo")) score += 35;
+    if (text.includes("asic")) score += 20;
+    if (text.includes("custom chip") || text.includes("custom silicon")) score += 20;
+    if (text.includes("networking")) score += 10;
+  }
+
+  for (const kw of HIGH_VALUE_KEYWORDS) {
+    if (text.includes(kw)) score += 5;
+  }
+
+  return Math.min(100, score);
+}
+
+function removeDuplicateArticles<T extends { title: string; url: string }>(articles: T[]): T[] {
+  const seenTitles = new Set<string>();
+  const seenUrls = new Set<string>();
+  return articles.filter((a) => {
+    const titleKey = a.title
+      .toLowerCase()
+      .replace(/[^\w\s]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 90);
+    const urlKey = a.url.split("?")[0]; // 쿼리스트링 제거 후 비교
+    if (!titleKey) return false;
+    if (seenTitles.has(titleKey) || seenUrls.has(urlKey)) return false;
+    seenTitles.add(titleKey);
+    seenUrls.add(urlKey);
+    return true;
+  });
+}
+
+// ── LLM analysis ──────────────────────────────────────────────────────────────
+
+async function analyzeNewsWithLLM({
+  articles,
+  symbol,
+  openAiApiKey,
+}: {
+  articles: ScoredArticle[];
+  symbol: string;
+  openAiApiKey: string;
+}): Promise<AnalyzedArticle[]> {
+  const llmInput: LLMArticleInput[] = articles.map(
+    ({ title, source, url, publishedAt, description }) => ({
+      title,
+      source,
+      url,
+      publishedAt,
+      description,
+    })
+  );
+
+  const prompt = `
+You are a senior equity research analyst specializing in AI semiconductors.
+
+Target ticker: ${symbol}
+
+From the candidate articles below, select the top 10 most investment-relevant articles.
+
+Scoring rules:
+- relevance_score must be 0 to 100.
+- 90-100: directly material to revenue, earnings, AI demand, guidance, capex, supply chain, pricing power, or competition.
+- 70-89: clearly related to AI semiconductor investment thesis.
+- 50-69: moderately relevant sector news.
+- below 50: weak or indirect relevance. Avoid selecting unless there are not enough articles.
+
+For each selected article:
+- Explain score_reason in Korean, one short sentence.
+- Provide exactly 5 Korean investment insight bullets.
+- Do not invent numbers not present in the article metadata.
+- If information is weak, clearly say uncertainty is high.
+
+Candidate articles:
+${JSON.stringify(llmInput, null, 2)}
+`;
+
+  const res = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${openAiApiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      input: prompt,
+      temperature: 0.2,
+      text: {
+        format: {
+          type: "json_schema",
+          name: "ranked_news_response",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["articles"],
+            properties: {
+              articles: {
+                type: "array",
+                minItems: 0,
+                maxItems: 10,
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  required: [
+                    "title", "source", "url", "publishedAt",
+                    "relevance_score", "score_reason", "directional_signal",
+                    "primary_tickers", "confidence", "summaryBullets",
+                  ],
+                  properties: {
+                    title: { type: "string" },
+                    source: { type: "string" },
+                    url: { type: "string" },
+                    publishedAt: { type: "string" },
+                    relevance_score: { type: "number", minimum: 0, maximum: 100 },
+                    score_reason: { type: "string" },
+                    directional_signal: {
+                      type: "string",
+                      enum: ["Bullish", "Bearish", "Neutral", "Mixed"],
+                    },
+                    primary_tickers: { type: "array", items: { type: "string" } },
+                    confidence: { type: "string", enum: ["High", "Medium", "Low"] },
+                    summaryBullets: {
+                      type: "array",
+                      minItems: 5,
+                      maxItems: 5,
+                      items: { type: "string" },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    }),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(data?.error?.message ?? "OpenAI API request failed");
+  }
+
+  const text: string = data.output?.[0]?.content?.[0]?.text ?? data.output_text ?? "";
+
+  if (!text) {
+    throw new Error("LLM returned empty response");
+  }
+
+  const parsed = JSON.parse(text);
+  return (parsed.articles ?? []) as AnalyzedArticle[];
 }
