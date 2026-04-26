@@ -871,21 +871,15 @@ export default function Home() {
                   <div
                     key={`${i}-${n.url}`}
                     style={{
+                      position: "relative",
                       background: "#0a0f1e",
                       border: "1px solid #1e293b",
                       borderRadius: 16,
                       padding: 14,
                     }}
                   >
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "flex-start",
-                        gap: 10,
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
+                    <div>
+                      <div>
                         <a
                           href={n.url}
                           target="_blank"
@@ -1025,24 +1019,26 @@ export default function Home() {
                           )}
                         </div>
                       </div>
-
-                      <button
-                        onClick={() => removeArchivedNews(n.url)}
-                        style={{
-                          flexShrink: 0,
-                          padding: "6px 12px",
-                          borderRadius: 10,
-                          border: "none",
-                          cursor: "pointer",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          background: "rgba(239,68,68,0.15)",
-                          color: "#ef4444",
-                        }}
-                      >
-                        삭제
-                      </button>
                     </div>
+
+                    <button
+                      onClick={() => removeArchivedNews(n.url)}
+                      style={{
+                        position: "absolute",
+                        top: 14,
+                        right: 14,
+                        padding: "4px 10px",
+                        borderRadius: 8,
+                        border: "none",
+                        cursor: "pointer",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: "rgba(239,68,68,0.15)",
+                        color: "#ef4444",
+                      }}
+                    >
+                      삭제
+                    </button>
                   </div>
                 ))}
               </div>
