@@ -158,24 +158,26 @@ async function fetchAndFilterNews(symbol: string, apiKey: string): Promise<Score
       ? '(Nvidia OR NVDA) AND (AI OR GPU OR "data center" OR semiconductor OR chip OR earnings OR capex)'
       : '(Broadcom OR AVGO) AND (AI OR ASIC OR "custom chip" OR networking OR semiconductor OR earnings OR capex)';
 
-  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=50`;
+  const from = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+  const base = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&language=en&sortBy=publishedAt&pageSize=100&from=${from}`;
 
-  const res = await fetch(url, {
-    headers: { "X-Api-Key": apiKey },
-    cache: "no-store",
-  });
+  const [res1, res2] = await Promise.all([
+    fetch(`${base}&page=1`, { headers: { "X-Api-Key": apiKey }, cache: "no-store" }),
+    fetch(`${base}&page=2`, { headers: { "X-Api-Key": apiKey }, cache: "no-store" }),
+  ]);
 
-  if (!res.ok) {
-    throw new Error(`News API responded with ${res.status}`);
+  if (!res1.ok) {
+    throw new Error(`News API responded with ${res1.status}`);
   }
 
-  const data = await res.json();
+  const [data1, data2] = await Promise.all([res1.json(), res2.ok ? res2.json() : { articles: [] }]);
 
-  if (!Array.isArray(data.articles)) {
-    return [];
-  }
+  const raw = [
+    ...(Array.isArray(data1.articles) ? data1.articles : []),
+    ...(Array.isArray(data2.articles) ? data2.articles : []),
+  ] as RawArticle[];
 
-  const scored = (data.articles as RawArticle[])
+  const scored = raw
     .filter((a) => isUsableArticle(a, symbol))
     .map((a) => toScoredArticle(a, symbol))
     .filter((a) => a.pre_score >= 35);
