@@ -154,6 +154,8 @@ export default function Home() {
     return filterDataByRange(data, selectedRange);
   }, [data, selectedRange]);
 
+  const visibleNews = news.filter((n) => !isArchived(n.url));
+
   function archiveNewsItem(item: NewsItem) {
     setArchivedNews((prev) => {
       if (prev.some((n) => n.url === item.url)) return prev;
@@ -575,7 +577,7 @@ export default function Home() {
 
             {!newsLoading && !newsError && (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {news.map((n, i) => (
+                {visibleNews.map((n, i) => (
                   <div
                     key={`${i}-${n.url}`}
                     style={{
@@ -808,7 +810,7 @@ export default function Home() {
                   </div>
                 ))}
 
-                {news.length === 0 && (
+                {visibleNews.length === 0 && (
                   <div style={{ color: "#475569", fontSize: 14, textAlign: "center", padding: 20 }}>
                     표시할 뉴스가 없습니다.
                   </div>
